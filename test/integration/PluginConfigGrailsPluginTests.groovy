@@ -1,10 +1,12 @@
+import org.codehaus.groovy.grails.commons.GrailsApplication
 import org.codehaus.groovy.grails.commons.GrailsClassUtils
 import org.codehaus.groovy.grails.plugins.GrailsPlugin
+import org.codehaus.groovy.grails.plugins.GrailsPluginManager
 
 class PluginConfigGrailsPluginTests extends GroovyTestCase {
 
-    def pluginManager
-    def grailsApplication
+    GrailsPluginManager pluginManager
+    GrailsApplication grailsApplication
 
     void testOnChange() {
         ConfigObject mergedConfig = grailsApplication.mergedConfig

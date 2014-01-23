@@ -1,11 +1,11 @@
 package org.grails.plugin.config
 
 import org.codehaus.groovy.grails.commons.ConfigurationHolder
+import org.codehaus.groovy.grails.commons.GrailsApplication
 
 class DefaultConfigHelperTests extends GroovyTestCase {
 
-    def grailsApplication
-    //GrailsPluginManager pluginManager
+    GrailsApplication grailsApplication
 
     void testMergedConfigInstance() {
         ConfigObject mergedConfig = grailsApplication.mergedConfig
@@ -66,18 +66,6 @@ class DefaultConfigHelperTests extends GroovyTestCase {
         assertEquals 'Plugin3', System.properties.firstPluginAfterConfigMerge
         assertEquals 'true', System.properties.fourthPluginAfterConfigMerge
     }
-
-    /*
-    void testNotifyConfigChange() {
-        ConfigObject mergedConfig = grailsApplication.mergedConfig
-        assertSame mergedConfig, grailsApplication.mergedConfig
-        GrailsPlugin plugin = pluginManager.getGrailsPluginForClassName('PluginConfigGrailsPlugin')
-        assertNotNull plugin
-        plugin.instance.onConfigChange(null)
-        //configHelper.notifyConfigChange()
-        assertNotSame mergedConfig, grailsApplication.mergedConfig
-        assertEquals mergedConfig, grailsApplication.mergedConfig
-    }*/
 
     void testAsMap() {
         ConfigObject cfg = grailsApplication.mergedConfig
