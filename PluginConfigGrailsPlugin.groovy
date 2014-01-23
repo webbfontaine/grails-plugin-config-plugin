@@ -45,9 +45,9 @@ class PluginConfigGrailsPlugin {
     ]
 
     def license = 'APACHE'
-    def developers = [[name: 'Joanna Dabal', email: 'joanna@9ci.com']]
-    def issueManagement = [system: 'GitHub', url: 'https://github.com/jdabal/grails-plugin-config-plugin/issues']
-    def scm = [url: 'https://github.com/jdabal/grails-plugin-config-plugin']
+    def developers = [[name: 'Joanna Dabal', email: 'joanna@9ci.com'], [name: 'Ondrej Kvasnovsky', email: 'kvasnovsky@gmail.com']]
+    def issueManagement = [system: 'GitHub', url: 'https://github.com/ondrej-kvasnovsky/grails-plugin-config-plugin/issues']
+    def scm = [url: 'https://github.com/ondrej-kvasnovsky/grails-plugin-config-plugin']
 
     private DefaultConfigHelper configHelper = new DefaultConfigHelper()
 
