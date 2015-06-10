@@ -39,6 +39,7 @@ import org.apache.commons.logging.LogFactory;
 import org.codehaus.groovy.grails.commons.GrailsApplication;
 import org.codehaus.groovy.grails.commons.GrailsClassUtils;
 import org.codehaus.groovy.grails.commons.cfg.ConfigurationHelper;
+import org.codehaus.groovy.grails.plugins.BinaryGrailsPlugin;
 import org.codehaus.groovy.grails.plugins.GrailsPlugin;
 import org.codehaus.groovy.grails.plugins.GrailsPluginManager;
 import org.springframework.context.ApplicationContext;
@@ -66,8 +67,7 @@ public abstract class AbstractConfigHelper {
 
     public abstract void notifyConfigChange();
 
-    protected ConfigObject buildMergedConfig(GrailsPluginManager pluginManager,
-                                             GrailsApplication grailsApplication) {
+    protected ConfigObject buildMergedConfig(GrailsPluginManager pluginManager, GrailsApplication grailsApplication) {
         if (log.isDebugEnabled()) {
             log.debug("getMergedConfigImpl()");
         }
@@ -112,7 +112,16 @@ public abstract class AbstractConfigHelper {
                 }
 
                 if (classesLoaded) {
-                    defaultConfigClass = grailsApplication.getClassForName(configName);
+                    if (plugin instanceof BinaryGrailsPlugin) {
+                        for (Class<?> cl : plugin.getProvidedArtefacts()) {
+                            if (cl.getName().equals(configName)) {
+                                defaultConfigClass = cl;
+                                break;
+                            }
+                        }
+                    } else {
+                        defaultConfigClass = grailsApplication.getClassForName(configName);
+                    }
                 } else {
                     /*
                      * When called from doWithWebDescriptor, classes aren't loaded yet.
@@ -126,24 +135,26 @@ public abstract class AbstractConfigHelper {
 
                 if (defaultConfigClass != null) {
                     /* The class is inside one grails-app subdirectory. */
-                    pluginClassMetadata = pluginClass.getAnnotation(
-                            org.codehaus.groovy.grails.plugins.metadata.GrailsPlugin.class);
+                    if (plugin instanceof BinaryGrailsPlugin) {
+                        for (Class<?> cl : plugin.getProvidedArtefacts()) {
+                            pluginClassMetadata = cl.getAnnotation(org.codehaus.groovy.grails.plugins.metadata.GrailsPlugin.class);
+                            if (pluginClassMetadata != null) {
+                                break;
+                            }
+                        }
+                    } else {
+                        pluginClassMetadata = pluginClass.getAnnotation(org.codehaus.groovy.grails.plugins.metadata.GrailsPlugin.class);
+                    }
 
-                    defaultConfigClassMetadata = defaultConfigClass.getAnnotation(
-                            org.codehaus.groovy.grails.plugins.metadata.GrailsPlugin.class);
+                    defaultConfigClassMetadata = defaultConfigClass.getAnnotation(org.codehaus.groovy.grails.plugins.metadata.GrailsPlugin.class);
 
                     if (log.isDebugEnabled()) {
                         log.debug("getMergedConfigImpl(): pluginClassMetadata " + pluginClassMetadata);
                         log.debug("getMergedConfigImpl(): defaultConfigClassMetadata " + defaultConfigClassMetadata);
                     }
 
-                    if (pluginClassMetadata == null &&
-                            defaultConfigClassMetadata == null ||
-                            pluginClassMetadata != null &&
-                                    defaultConfigClassMetadata != null &&
-                                    pluginClassMetadata.name().equals(defaultConfigClassMetadata.name()) ||
-                            /* Workaround when building this as a Grails 2.0.0 plugin. */ applicationName != null &&
-                            applicationName.equals(plugin.getFileSystemShortName())) {
+                    if (pluginClassMetadata == null && defaultConfigClassMetadata == null || pluginClassMetadata != null && defaultConfigClassMetadata != null && pluginClassMetadata.name().equals(defaultConfigClassMetadata.name()) ||
+                    /* Workaround when building this as a Grails 2.0.0 plugin. */applicationName != null && applicationName.equals(plugin.getFileSystemShortName())) {
                         /* The default config belongs to this plugin. */
                         log.debug("getMergedConfigImpl(): default config found");
                     } else {
@@ -237,8 +248,7 @@ public abstract class AbstractConfigHelper {
     }
 
     protected void mergeInDefaultConfigs(ConfigObject config, List<Class<?>> defaultConfigClasses, GroovyClassLoader classLoader) {
-        ConfigSlurper configSlurper = new ConfigSlurper(Environment
-                .getCurrent().getName());
+        ConfigSlurper configSlurper = new ConfigSlurper(Environment.getCurrent().getName());
         configSlurper.setClassLoader(classLoader);
         for (Class<?> defaultConfigClass : defaultConfigClasses) {
             try {
@@ -249,8 +259,7 @@ public abstract class AbstractConfigHelper {
                 }
                 config.merge(newConfig);
             } catch (RuntimeException e) {
-                log.error("mergeInDefaultConfigs(): Error merging "
-                        + defaultConfigClass, e);
+                log.error("mergeInDefaultConfigs(): Error merging " + defaultConfigClass, e);
             }
         }
 
@@ -259,26 +268,22 @@ public abstract class AbstractConfigHelper {
         }
     }
 
-    protected GrailsPluginManager getPluginManager(
-            GrailsApplication grailsApplication) {
+    protected GrailsPluginManager getPluginManager(GrailsApplication grailsApplication) {
         GrailsPluginManager pluginManager = null;
 
         {
             ApplicationContext mainContext = grailsApplication.getMainContext();
             if (mainContext != null) {
-                pluginManager = (GrailsPluginManager) mainContext
-                        .getBean("pluginManager");
+                pluginManager = (GrailsPluginManager) mainContext.getBean("pluginManager");
 
             }
         }
 
         if (pluginManager == null) {
-            ApplicationContext mainContext = grailsApplication
-                    .getParentContext();
+            ApplicationContext mainContext = grailsApplication.getParentContext();
             if (mainContext != null) {
                 try {
-                    pluginManager = (GrailsPluginManager) mainContext
-                            .getBean("pluginManager");
+                    pluginManager = (GrailsPluginManager) mainContext.getBean("pluginManager");
                 } catch (org.springframework.beans.factory.NoSuchBeanDefinitionException e) {
                     /* Workaround for Grails 2.0.0. */
                     log.warn("getPluginManager()", e);
@@ -297,34 +302,26 @@ public abstract class AbstractConfigHelper {
 
     protected static class ConfigObjectProxy implements InvocationHandler {
 
-        private static final Log LOG = LogFactory
-                .getLog(ConfigObjectProxy.class);
+        private static final Log LOG = LogFactory.getLog(ConfigObjectProxy.class);
 
         private boolean isCheckedMap;
         private Map<Object, Object> config;
 
-        public static Object newInstance(Map<Object, Object> config,
-                                         boolean isCheckedMap) {
+        public static Object newInstance(Map<Object, Object> config, boolean isCheckedMap) {
             ClassLoader cl = config.getClass().getClassLoader();
 
             Class<?>[] configInterfaces = config.getClass().getInterfaces();
-            Set<Class<?>> interfaces = new LinkedHashSet<Class<?>>(
-                    Arrays.asList(configInterfaces));
+            Set<Class<?>> interfaces = new LinkedHashSet<Class<?>>(Arrays.asList(configInterfaces));
             interfaces.add(Map.class);
             Assert.notNull(interfaces.remove(GroovyObject.class));
 
             @SuppressWarnings("unchecked")
-            Map<Object, Object> result = (Map<Object, Object>) java.lang.reflect.Proxy
-                    .newProxyInstance(
-                            cl,
-                            interfaces.toArray(new Class<?>[interfaces.size()]),
-                            new ConfigObjectProxy(config, isCheckedMap));
+            Map<Object, Object> result = (Map<Object, Object>) java.lang.reflect.Proxy.newProxyInstance(cl, interfaces.toArray(new Class<?>[interfaces.size()]), new ConfigObjectProxy(config, isCheckedMap));
 
             return result;
         }
 
-        private ConfigObjectProxy(Map<Object, Object> config,
-                                  boolean isCheckedMap) {
+        private ConfigObjectProxy(Map<Object, Object> config, boolean isCheckedMap) {
             this.config = config;
             this.isCheckedMap = isCheckedMap;
         }
