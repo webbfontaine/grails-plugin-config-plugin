@@ -17,7 +17,7 @@ import org.grails.plugin.config.DefaultConfigHelper
 
 class PluginConfigGrailsPlugin {
 
-    def version = '0.2.0-wf'
+    def version = '0.2.0'
     def grailsVersion = '2.0 > *'
     def dependsOn = ['core': '* > 1.0']
 
